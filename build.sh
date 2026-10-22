@@ -49,6 +49,15 @@ done
 while read -r f d; do [ -e "install/lib/ext/$(basename "$d")" ] || { echo "缺依赖 $d（来自 $f）"; exit 1; }; done \
   < <(for f in install/lib/ext/*; do otool -L "$f" | awk -v f="$f" 'NR>1 && $1 ~ /^@/ {print f, $1}'; done)
 [ -e install/lib/ext/libSDL3.dylib ]
+# 绝对路径 install name 改成 @loader_path，改完 ad-hoc 重签（改 install name 会使原签名失效）。
+# Wine 经 DYLD_FALLBACK_LIBRARY_PATH 找到 ext 里的库，闭包内部互相引用靠这一步
+for f in install/lib/ext/*.dylib; do
+  install_name_tool -id "@loader_path/$(basename "$f")" "$f"
+  while read -r dep; do install_name_tool -change "$dep" "@loader_path/$(basename "$dep")" "$f"; done \
+    < <(otool -L "$f" | awk 'NR>1{print $1}' | grep -E '^/(usr/local|opt/homebrew)/' || true)
+  codesign -f -s - "$f"
+done
+! otool -L install/lib/ext/*.dylib | grep -E "^[[:space:]]+/(usr/local|opt/homebrew)/"   # 不许残留绝对引用
 ls install/lib/ext | tee logs/bundle.txt
 tar -C install -czf cx-wine.tar.gz .
 ls -l cx-wine.tar.gz
