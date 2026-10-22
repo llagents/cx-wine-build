@@ -6,7 +6,7 @@ W=$PWD/work; mkdir -p "$W/logs"; cd "$W"
 step(){ echo "::group::$1"; }; end(){ echo "::endgroup::"; }
 
 step deps
-brew install mingw-w64 bison pkgconf gettext freetype gnutls sdl2 sdl3 > logs/brew.log 2>&1 || { tail -30 logs/brew.log; exit 1; }
+brew install mingw-w64 bison pkgconf gettext freetype gnutls sdl2 sdl3 molten-vk > logs/brew.log 2>&1 || { tail -30 logs/brew.log; exit 1; }
 export PATH="$(brew --prefix bison)/bin:$PATH"
 end
 
@@ -22,6 +22,7 @@ mkdir build install && cd build
   --enable-archs=i386,x86_64 --without-x --without-wayland --without-alsa --without-capi --without-dbus \
   --without-oss --without-pulse --without-udev --without-v4l2 --without-gstreamer --without-cups \
   CFLAGS="-O2 -g0" CROSSCFLAGS="-O2 -g0" > ../logs/configure.log 2>&1 || { tail -40 ../logs/configure.log; exit 1; }
+grep -q 'define SONAME_LIBVULKAN' include/config.h   # CW HACK 25909：win32u/vulkan.c 无条件引用，缺了会在 make 80 分钟后才炸
 end
 
 step make
