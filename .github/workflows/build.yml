@@ -1,0 +1,32 @@
+name: build-cx-wine
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "probe = 50MB upload test, build = compile CodeWeavers wine"
+        default: build
+      version:
+        description: "CrossOver source version"
+        default: "26.3.0"
+jobs:
+  probe:
+    if: inputs.mode == 'probe'
+    runs-on: macos-15-intel
+    steps:
+      - run: head -c 50000000 /dev/urandom > probe.bin && shasum probe.bin > probe.sha && cat probe.sha
+      - uses: actions/upload-artifact@v4
+        with: { name: probe, path: "probe.*", retention-days: 1 }
+  build:
+    if: inputs.mode == 'build'
+    runs-on: macos-15-intel
+    timeout-minutes: 170
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./build.sh
+        env: { CX_VERSION: "${{ inputs.version }}" }
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with: { name: cx-wine, path: work/cx-wine.tar.gz, retention-days: 1 }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: logs, path: work/logs, retention-days: 3 }
